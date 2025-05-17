@@ -6,11 +6,13 @@ A modern UI for interacting with local Ollama language models.
 
 - Real-time connection to Ollama server at `http://localhost:11434`
 - Model management (view available models)
+- Image attachment support for multimodal models
+- Visual indicators for models supporting image input
 - Streaming chat responses
 - Syntax-highlighted code blocks
 - Markdown rendering
 - Chat history management (localStorage)
-- Export/import conversation history
+- Export/import conversation history with image support
 - Mobile-responsive design
 
 ## Prerequisites

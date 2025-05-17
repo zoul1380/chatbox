@@ -28,11 +28,13 @@ ChatBox is a modern web application that provides a user-friendly interface for 
 
 - Real-time connection to Ollama server at `http://localhost:11434`
 - Model selection from available Ollama models
+- Image attachment support for multimodal models
+- Visual indicators for models supporting image input
 - Streaming chat responses with real-time updates
 - Syntax-highlighted code blocks
 - Markdown rendering
 - Chat history management using localStorage
-- Export/import conversation history
+- Export/import conversation history with image support
 - Mobile-responsive design
 - Rate limiting and error handling
 
@@ -193,7 +195,8 @@ Main entry point for the Express server. Sets up middleware, routes, and error h
      timestamp: String,    // ISO timestamp
      type: String,         // 'text', 'markdown', or 'code'
      isLoading: Boolean,   // Optional, indicates if message is loading
-     isError: Boolean      // Optional, indicates if message has error
+     isError: Boolean,     // Optional, indicates if message has error
+     image: String         // Optional, base64-encoded image data
    }
    ```
 
