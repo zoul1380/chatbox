@@ -1,0 +1,283 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { Box, Container, Paper, CircularProgress, Typography, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle } from '@mui/material';
+import { useDispatch, useSelector } from 'react-redux';
+import Header from './components/Header';
+import ChatMessage from './components/ChatMessage';
+import ChatInput from './components/ChatInput';
+import { v4 as uuidv4 } from 'uuid';
+
+const API_BASE_URL = 'http://localhost:3001/api/ollama';
+
+const App = () => {
+  const dispatch = useDispatch();
+  const [messages, setMessages] = useState([]);
+  const [isSending, setIsSending] = useState(false);
+  const chatHistoryRef = useRef(null);
+  const { selectedModel, ollamaStatus } = useSelector((state) => state.ollama);
+  const [currentChatHistoryId, setCurrentChatHistoryId] = useState(null);
+  const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
+
+  // Load chat history from localStorage when selectedModel changes
+  useEffect(() => {
+    if (selectedModel) {
+      const historyId = `chatHistory_${selectedModel}`;
+      setCurrentChatHistoryId(historyId);
+      const loadedMessages = JSON.parse(localStorage.getItem(historyId)) || [];
+      setMessages(loadedMessages);
+    } else {
+      setMessages([]); // Clear messages if no model is selected
+    }
+  }, [selectedModel]);
+
+  // Save chat history to localStorage whenever messages change
+  useEffect(() => {
+    if (currentChatHistoryId && messages.length > 0) {
+      localStorage.setItem(currentChatHistoryId, JSON.stringify(messages));
+    } else if (currentChatHistoryId && messages.length === 0) {
+      localStorage.removeItem(currentChatHistoryId);
+    }
+  }, [messages, currentChatHistoryId]);
+
+  // Scroll to bottom of chat history
+  useEffect(() => {
+    if (chatHistoryRef.current) {
+      chatHistoryRef.current.scrollTop = chatHistoryRef.current.scrollHeight;
+    }
+  }, [messages]);
+
+  const handleSendMessage = async (text) => {
+    if (!selectedModel || ollamaStatus !== 'connected') {
+      console.error("Cannot send message: No model selected or Ollama disconnected.");
+      return;
+    }
+
+    const userMessage = { 
+      id: uuidv4(), 
+      text, 
+      sender: 'user', 
+      timestamp: new Date().toISOString(), 
+      type: 'text'
+    };
+    
+    // Prepare messages for Ollama API
+    const apiMessages = messages
+        .map(msg => ({ 
+            role: msg.sender === 'user' ? 'user' : 'assistant', 
+            content: msg.text 
+        }))
+        .concat([{ role: 'user', content: text }]);
+
+    setMessages(prevMessages => [...prevMessages, userMessage]);
+    setIsSending(true);
+
+    const botMessageId = uuidv4();
+    const botMessagePlaceholder = {
+      id: botMessageId,
+      text: '',
+      sender: 'bot',
+      timestamp: new Date().toISOString(),
+      isLoading: true,
+      type: 'markdown' // Default type, can change based on content
+    };
+    setMessages(prevMessages => [...prevMessages, botMessagePlaceholder]);
+
+    let accumulatedResponse = '';
+    let responseType = 'markdown';
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/chat`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'text/event-stream'
+        },
+        body: JSON.stringify({ model: selectedModel, messages: apiMessages })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: 'Failed to connect to chat stream' }));
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+
+      let done = false;
+      while (!done) {
+        const { value, done: readerDone } = await reader.read();
+        done = readerDone;
+        if (value) {
+          const chunk = decoder.decode(value, { stream: true });
+          // SSE data is prefixed with "data: " and ends with "\n\n"
+          const lines = chunk.split('\n\n');
+          lines.forEach(line => {
+            if (line.startsWith('data: ')) {
+              const jsonString = line.substring(5);
+              if (jsonString.trim()) {
+                try {
+                  const parsedData = JSON.parse(jsonString);
+                  
+                  if (parsedData.done) {
+                    // This is the final "done" signal
+                    setMessages(prev => prev.map(msg =>
+                      msg.id === botMessageId ? { ...msg, isLoading: false, text: accumulatedResponse, type: responseType } : msg
+                    ));
+                    setIsSending(false);
+                    return;
+                  }
+
+                  if (parsedData.message && parsedData.message.content) {
+                    accumulatedResponse += parsedData.message.content;
+                    // Check for code blocks
+                    if (accumulatedResponse.includes('```')) {
+                      responseType = 'code';
+                    }
+
+                    setMessages(prev => prev.map(msg =>
+                      msg.id === botMessageId ? { ...msg, text: accumulatedResponse, type: responseType, isLoading: true } : msg
+                    ));
+                  }
+                } catch (e) {
+                  console.error("Error parsing streamed JSON:", e);
+                }
+              }
+            }
+          });
+        }
+      }
+
+      // Stream finished but no "done" message received
+      if (isSending) {
+         setMessages(prev => prev.map(msg =>
+            msg.id === botMessageId ? { ...msg, isLoading: false, text: accumulatedResponse, type: responseType } : msg
+         ));
+         setIsSending(false);
+      }
+
+    } catch (error) {
+      console.error("Error sending message:", error);
+      setMessages(prev => prev.map(msg =>
+        msg.id === botMessageId ? { ...msg, text: `Error: ${error.message}`, isError: true, isLoading: false } : msg
+      ));
+      setIsSending(false);
+    }
+  };
+
+  const handleClearConversation = () => {
+    setClearConfirmOpen(true);
+  };
+
+  const handleConfirmClear = () => {
+    if (currentChatHistoryId) {
+      localStorage.removeItem(currentChatHistoryId);
+    }
+    setMessages([]);
+    setClearConfirmOpen(false);
+  };
+
+  const handleCancelClear = () => {
+    setClearConfirmOpen(false);
+  };
+
+  const handleExportChat = () => {
+    if (!messages.length) return;
+    const fileName = `chat_history_${selectedModel}_${new Date().toISOString().split('T')[0]}.json`;
+    // Filter out role/content properties if they exist
+    const exportableMessages = messages.map(({role, content, ...rest}) => rest);
+    const jsonStr = JSON.stringify(exportableMessages, null, 2);
+    const blob = new Blob([jsonStr], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImportChat = (event) => {
+    const file = event.target.files[0];
+    if (file && selectedModel) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const importedMessages = JSON.parse(e.target.result);
+          if (Array.isArray(importedMessages)) {
+            // Ensure imported messages have the necessary fields
+            const validatedMessages = importedMessages.map(msg => ({
+                id: msg.id || uuidv4(),
+                text: msg.text || '',
+                sender: msg.sender || 'unknown',
+                timestamp: msg.timestamp || new Date().toISOString(),
+                type: msg.type || 'text',
+            }));
+            setMessages(validatedMessages);
+            const historyId = `chatHistory_${selectedModel}`;
+            localStorage.setItem(historyId, JSON.stringify(validatedMessages));
+          } else {
+            alert("Invalid chat history file format.");
+          }
+        } catch (err) {
+          alert("Error importing chat history: " + err.message);
+        }
+      };
+      reader.readAsText(file);
+    }
+    event.target.value = null; 
+  };
+
+  return (
+    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh', bgcolor: 'grey.100' }}>
+      <Header />
+      <Container maxWidth="lg" sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', pt: '64px', pb: 2 }}>
+        <Paper 
+          ref={chatHistoryRef} 
+          elevation={1} 
+          sx={{ 
+            flexGrow: 1, 
+            p: 2, 
+            overflowY: 'auto', 
+            mb: 2, 
+            backgroundColor: 'white' 
+          }}
+        >
+          {messages.length === 0 && (
+            <Typography variant="body1" color="textSecondary" sx={{textAlign: 'center', mt: 3}}>
+              {selectedModel ? `No messages yet. Start chatting with ${selectedModel}!` : 'Please select a model to begin.'}
+            </Typography>
+          )}
+          {messages.map((msg) => (
+            <ChatMessage key={msg.id} message={msg} />
+          ))}
+        </Paper>
+        <Box sx={{display: 'flex', justifyContent:'space-between', alignItems: 'center', mb:1, px:1}}>
+            <Box>
+                <Button size="small" onClick={handleClearConversation} disabled={messages.length === 0 || isSending}>Clear Chat</Button>
+                <Button size="small" onClick={handleExportChat} disabled={messages.length === 0 || isSending}>Export Chat</Button>
+                <Button size="small" component="label" disabled={!selectedModel || isSending}>
+                    Import Chat
+                    <input type="file" accept=".json" hidden onChange={handleImportChat} />
+                </Button>
+            </Box>
+        </Box>
+        <ChatInput onSendMessage={handleSendMessage} isSending={isSending} />
+      </Container>
+
+      <Dialog open={clearConfirmOpen} onClose={handleCancelClear}>
+        <DialogTitle>Clear Chat History?</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Are you sure you want to clear all messages for the model "{selectedModel}"? This action cannot be undone.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCancelClear}>Cancel</Button>
+          <Button onClick={handleConfirmClear} color="error">Clear</Button>
+        </DialogActions>
+      </Dialog>
+    </Box>
+  );
+};
+
+export default App;

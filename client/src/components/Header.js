@@ -1,0 +1,211 @@
+import React, { useEffect, useState, useRef } from 'react';
+import { useSelector, useDispatch } from 'react-redux';
+import { AppBar, Toolbar, Typography, Chip, Select, MenuItem, FormControl, InputLabel, Box, Badge, IconButton, Menu, Tooltip, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Button } from '@mui/material';
+import { checkOllamaServerHealth, fetchOllamaModels, setSelectedModel, incrementConnectionRetries, resetConnectionRetries } from '../features/ollama/ollamaSlice';
+import CloudDoneIcon from '@mui/icons-material/CloudDone';
+import CloudOffIcon from '@mui/icons-material/CloudOff';
+import MoreVertIcon from '@mui/icons-material/MoreVert';
+import DeleteIcon from '@mui/icons-material/Delete';
+import FileUploadIcon from '@mui/icons-material/FileUpload';
+import FileDownloadIcon from '@mui/icons-material/FileDownload';
+
+const MAX_CONNECTION_RETRIES = 5;
+const HEALTH_CHECK_INTERVAL = 30000; // 30 seconds
+const MODEL_REFRESH_INTERVAL = 60000; // 60 seconds
+
+const Header = () => {
+  const dispatch = useDispatch();  const { ollamaStatus, connectionRetries, error, models, selectedModel } = useSelector((state) => state.ollama);
+
+  const [anchorEl, setAnchorEl] = useState(null);
+  const [clearDialogOpen, setClearDialogOpen] = useState(false);
+  const fileInputRef = useRef(null);
+
+  // Initial and periodic health check
+  useEffect(() => {
+    const performHealthCheck = () => {
+      if (ollamaStatus !== 'connected' && connectionRetries < MAX_CONNECTION_RETRIES) {
+        dispatch(checkOllamaServerHealth()).then(result => {
+          if (checkOllamaServerHealth.rejected.match(result)) {
+            dispatch(incrementConnectionRetries());
+            const delay = Math.pow(2, connectionRetries) * 1000; // Exponential backoff
+            setTimeout(performHealthCheck, Math.min(delay, 30000)); // Max 30s delay
+          }
+        });
+      } else if (ollamaStatus === 'connected') {
+        dispatch(resetConnectionRetries());
+      }
+    };
+
+    performHealthCheck(); // Initial check
+    const healthInterval = setInterval(performHealthCheck, HEALTH_CHECK_INTERVAL);
+    return () => clearInterval(healthInterval);
+  }, [dispatch, ollamaStatus, connectionRetries]);
+
+  // Initial and periodic model fetching
+  useEffect(() => {
+    if (ollamaStatus === 'connected') {
+      dispatch(fetchOllamaModels());
+      const modelInterval = setInterval(() => dispatch(fetchOllamaModels()), MODEL_REFRESH_INTERVAL);
+      return () => clearInterval(modelInterval);
+    }
+  }, [dispatch, ollamaStatus]);
+  const handleModelChange = (event) => {
+    dispatch(setSelectedModel(event.target.value));
+  };
+
+  const handleMenuClick = (event) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+  };
+
+  const handleClearClick = () => {
+    setClearDialogOpen(true);
+    handleMenuClose();
+  };
+  const handleClearConfirm = () => {
+    // For now we'll handle clearing in the parent component (App.js)
+    setClearDialogOpen(false);
+  };
+
+  const handleClearCancel = () => {
+    setClearDialogOpen(false);
+  };
+  const handleExportClick = () => {
+    // This functionality is handled in App.js
+    handleMenuClose();
+  };
+
+  const handleImportClick = () => {
+    fileInputRef.current?.click();
+    handleMenuClose();
+  };
+
+  const handleFileChange = (event) => {
+    // This functionality is handled in App.js
+    // Just reset the file input
+    event.target.value = null;
+  };
+
+  let statusChip;
+  switch (ollamaStatus) {
+    case 'connected':
+      statusChip = <Chip label="Ollama: Connected" color="success" size="small" />;
+      break;
+    case 'disconnected':
+      statusChip = <Chip label={`Ollama: Disconnected (retrying ${connectionRetries}/${MAX_CONNECTION_RETRIES})`} color="error" size="small" />;
+      break;
+    case 'checking':
+      statusChip = <Chip label="Ollama: Checking..." color="warning" size="small" />;
+      break;
+    default:
+      statusChip = <Chip label="Ollama: Unknown" color="default" size="small" />;
+  }
+
+  return (
+    <AppBar position="fixed">
+      <Toolbar variant="dense">
+        <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+          ChatBox
+        </Typography>
+        {statusChip}
+        {ollamaStatus === 'connected' && (
+          <FormControl size="small" sx={{ m: 1, minWidth: 120, backgroundColor: 'white', borderRadius: 1 }}>
+            <InputLabel id="model-select-label">Model</InputLabel>            <Select
+              labelId="model-select-label"
+              id="model-select"
+              value={selectedModel || ''}
+              label="Model"
+              onChange={handleModelChange}
+              disabled={!models || models.length === 0}
+            >
+              <MenuItem value="">
+                <em>None</em>
+              </MenuItem>
+              {models && models.map((model) => (
+                <MenuItem key={model.name} value={model.name}>
+                  {model.name} ({(new Date(model.modified_at)).toLocaleDateString()})
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        )}
+        <Box sx={{ flexGrow: 0 }}>
+          <IconButton
+            size="large"
+            aria-label="menu options"
+            aria-controls="menu-appbar"
+            aria-haspopup="true"
+            onClick={handleMenuClick}
+            color="inherit"
+          >
+            <MoreVertIcon />
+          </IconButton>
+          <Menu
+            id="menu-appbar"
+            anchorEl={anchorEl}
+            anchorOrigin={{
+              vertical: 'bottom',
+              horizontal: 'right',
+            }}
+            keepMounted
+            transformOrigin={{
+              vertical: 'top',
+              horizontal: 'right',
+            }}
+            open={Boolean(anchorEl)}
+            onClose={handleMenuClose}
+          >
+            <MenuItem onClick={handleClearClick}>
+              <DeleteIcon fontSize="small" sx={{ mr: 1 }} />
+              Clear Chat
+            </MenuItem>
+            <MenuItem onClick={handleExportClick}>
+              <FileDownloadIcon fontSize="small" sx={{ mr: 1 }} />
+              Export Chat
+            </MenuItem>
+            <MenuItem onClick={handleImportClick}>
+              <FileUploadIcon fontSize="small" sx={{ mr: 1 }} />
+              Import Chat
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".json"
+                style={{ display: 'none' }}
+                onChange={handleFileChange}
+              />
+            </MenuItem>
+          </Menu>
+        </Box>
+      </Toolbar>
+      { (ollamaStatus === 'disconnected' || ollamaStatus === 'error') && error && 
+        <Box sx={{ bgcolor: 'error.main', color: 'error.contrastText', p: 0.5, textAlign: 'center'}}>
+            <Typography variant="caption">
+                Failed to connect: {typeof error === 'string' ? error : error.message || 'Unknown error'}
+            </Typography>
+        </Box>
+      }
+      <Dialog
+        open={clearDialogOpen}
+        onClose={handleClearCancel}
+      >
+        <DialogTitle>Clear Chat History</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Are you sure you want to clear all messages for the current model? This action cannot be undone.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleClearCancel}>Cancel</Button>
+          <Button onClick={handleClearConfirm} color="error" autoFocus>
+            Clear
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </AppBar>
+  );
+};
+
+export default Header;

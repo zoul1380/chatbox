@@ -1,0 +1,23 @@
+# Files to exclude from GitHub Copilot context
+
+# Large dependencies
+node_modules/
+**/node_modules/
+
+# Build outputs
+**/build/
+**/dist/
+
+# Environment files
+.env
+.env.*
+
+# Logs
+*.log
+logs/
+
+# Cache folders
+.cache/
+
+# Test coverage reports
+coverage/

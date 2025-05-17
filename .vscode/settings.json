@@ -1,0 +1,18 @@
+{
+    "editor.codeActionsOnSave": {
+        "source.fixAll.eslint": "explicit"
+    },
+    "github.copilot.enable": {
+        "*": true,
+        "plaintext": true,
+        "markdown": true,
+        "javascript": true,
+        "javascriptreact": true
+    },
+    "github.copilot.advanced": {
+        "inlineSuggestCount": 3,
+        "projectContext": [
+            ".github/copilot-config.md"
+        ]
+    }
+}
