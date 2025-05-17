@@ -1,11 +1,10 @@
-// Rate limiter middleware to limit requests to 3 per second with queue
-const queue = require('queue');
+// Rate limiter middleware to implement a simple rate limiting
+// We'll use a simpler implementation without the queue package
 
-// Queue for API requests
-const requestQueue = queue({
-  concurrency: 3, // Only process 3 requests at a time
-  autostart: true // Start processing as soon as items are added
-});
+// Keep track of ongoing requests
+let activeRequests = 0;
+const maxConcurrentRequests = 3; // Maximum of 3 concurrent requests
+const requestDelay = 333; // ~3 requests per second (in ms)
 
 // Keep track of successful/failed requests for logging
 let requestCount = 0;
@@ -46,37 +45,36 @@ API Requests Stats:
   `);
 };
 
-// Rate limiter and queue middleware
+// Rate limiter middleware
 exports.rateLimiter = (req, res, next) => {
-  // Create a promise for this request
-  const processRequest = () => {
-    return new Promise(resolve => {
-      // Log the request
-      logRequest(req, 'queued');
-      // Process the request after a small delay to enforce rate limiting
-      setTimeout(() => {
-        // Store the original res.end to capture status code
-        const originalEnd = res.end;
-        res.end = function(chunk, encoding) {
-          logRequest(req, res.statusCode);
-          return originalEnd.call(res, chunk, encoding);
-        };
-        
-        // Continue with middleware chain
-        next();
-        resolve();
-      }, 333); // ~3 requests per second
-    });
-  };
-
-  // Add to queue
-  requestQueue.push(processRequest);
+  // Log the request
+  logRequest(req, 'queued');
   
-  // If the queue is too long, let the client know
-  if (requestQueue.length > 10) {
-    res.set('X-Queue-Length', requestQueue.length);
-    res.set('Retry-After', Math.ceil(requestQueue.length / 3));
+  if (activeRequests >= maxConcurrentRequests) {
+    // Too many concurrent requests, add headers to suggest retry
+    res.set('X-Queue-Length', activeRequests);
+    res.set('Retry-After', '1');
+    
+    // Simple backoff strategy
+    return setTimeout(() => {
+      this.rateLimiter(req, res, next);
+    }, requestDelay);
   }
+  
+  // Increment active requests counter
+  activeRequests++;
+  
+  // Store the original res.end to capture status code and decrement counter
+  const originalEnd = res.end;
+  res.end = function(chunk, encoding) {
+    activeRequests--; // Decrement when request completes
+    logRequest(req, res.statusCode);
+    return originalEnd.call(res, chunk, encoding);
+  };
+    // Add delay for rate limiting
+  setTimeout(() => {
+    next();
+  }, requestDelay);
 };
 
 // Global error handler
