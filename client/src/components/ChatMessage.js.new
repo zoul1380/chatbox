@@ -1,4 +1,4 @@
-﻿// filepath: g:\code\chatbox\client\src\components\ChatMessage.js
+// filepath: g:\code\chatbox\client\src\components\ChatMessage.js
 import { Box, Paper, Typography, CircularProgress, Tooltip, IconButton } from '@mui/material';
 import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';

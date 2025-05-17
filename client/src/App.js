@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Box, Container, Paper, CircularProgress, Typography, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle } from '@mui/material';
-import { useDispatch, useSelector } from 'react-redux';
+import { Box, Container, Paper, Typography, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle } from '@mui/material';
+import { useSelector } from 'react-redux';
 import Header from './components/Header';
 import ChatMessage from './components/ChatMessage';
 import ChatInput from './components/ChatInput';
@@ -9,7 +9,6 @@ import { v4 as uuidv4 } from 'uuid';
 const API_BASE_URL = 'http://localhost:3001/api/ollama';
 
 const App = () => {
-  const dispatch = useDispatch();
   const [messages, setMessages] = useState([]);
   const [isSending, setIsSending] = useState(false);
   const chatHistoryRef = useRef(null);
@@ -102,6 +101,30 @@ const App = () => {
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
 
+      const processStreamedResponse = (parsedData) => {
+        if (parsedData.done) {
+          // This is the final "done" signal
+          setMessages(prev => prev.map(msg =>
+            msg.id === botMessageId ? { ...msg, isLoading: false, text: accumulatedResponse, type: responseType } : msg
+          ));
+          setIsSending(false);
+          return true;
+        }
+
+        if (parsedData.message && parsedData.message.content) {
+          accumulatedResponse += parsedData.message.content;
+          // Check for code blocks
+          if (accumulatedResponse.includes('```')) {
+            responseType = 'code';
+          }
+
+          setMessages(prev => prev.map(msg =>
+            msg.id === botMessageId ? { ...msg, text: accumulatedResponse, type: responseType, isLoading: true } : msg
+          ));
+        }
+        return false;
+      };
+
       let done = false;
       while (!done) {
         const { value, done: readerDone } = await reader.read();
@@ -110,39 +133,21 @@ const App = () => {
           const chunk = decoder.decode(value, { stream: true });
           // SSE data is prefixed with "data: " and ends with "\n\n"
           const lines = chunk.split('\n\n');
-          lines.forEach(line => {
+          for (const line of lines) {
             if (line.startsWith('data: ')) {
               const jsonString = line.substring(5);
               if (jsonString.trim()) {
                 try {
                   const parsedData = JSON.parse(jsonString);
-                  
-                  if (parsedData.done) {
-                    // This is the final "done" signal
-                    setMessages(prev => prev.map(msg =>
-                      msg.id === botMessageId ? { ...msg, isLoading: false, text: accumulatedResponse, type: responseType } : msg
-                    ));
-                    setIsSending(false);
+                  if (processStreamedResponse(parsedData)) {
                     return;
-                  }
-
-                  if (parsedData.message && parsedData.message.content) {
-                    accumulatedResponse += parsedData.message.content;
-                    // Check for code blocks
-                    if (accumulatedResponse.includes('```')) {
-                      responseType = 'code';
-                    }
-
-                    setMessages(prev => prev.map(msg =>
-                      msg.id === botMessageId ? { ...msg, text: accumulatedResponse, type: responseType, isLoading: true } : msg
-                    ));
                   }
                 } catch (e) {
                   console.error("Error parsing streamed JSON:", e);
                 }
               }
             }
-          });
+          }
         }
       }
 

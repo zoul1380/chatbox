@@ -1,9 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { AppBar, Toolbar, Typography, Chip, Select, MenuItem, FormControl, InputLabel, Box, Badge, IconButton, Menu, Tooltip, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Button } from '@mui/material';
+import { AppBar, Toolbar, Typography, Chip, Select, MenuItem, FormControl, InputLabel, Box, IconButton, Menu, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Button } from '@mui/material';
 import { checkOllamaServerHealth, fetchOllamaModels, setSelectedModel, incrementConnectionRetries, resetConnectionRetries } from '../features/ollama/ollamaSlice';
-import CloudDoneIcon from '@mui/icons-material/CloudDone';
-import CloudOffIcon from '@mui/icons-material/CloudOff';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import DeleteIcon from '@mui/icons-material/Delete';
 import FileUploadIcon from '@mui/icons-material/FileUpload';
@@ -14,7 +12,8 @@ const HEALTH_CHECK_INTERVAL = 30000; // 30 seconds
 const MODEL_REFRESH_INTERVAL = 60000; // 60 seconds
 
 const Header = () => {
-  const dispatch = useDispatch();  const { ollamaStatus, connectionRetries, error, models, selectedModel } = useSelector((state) => state.ollama);
+  const dispatch = useDispatch();  
+  const { ollamaStatus, connectionRetries, error, models, selectedModel } = useSelector((state) => state.ollama);
 
   const [anchorEl, setAnchorEl] = useState(null);
   const [clearDialogOpen, setClearDialogOpen] = useState(false);
@@ -60,21 +59,22 @@ const Header = () => {
   const handleMenuClose = () => {
     setAnchorEl(null);
   };
-
   const handleClearClick = () => {
     setClearDialogOpen(true);
     handleMenuClose();
   };
-  const handleClearConfirm = () => {
-    // For now we'll handle clearing in the parent component (App.js)
-    setClearDialogOpen(false);
-  };
-
+  
   const handleClearCancel = () => {
     setClearDialogOpen(false);
   };
+  
+  const handleClearConfirm = () => {
+    setClearDialogOpen(false);
+    // Actual clearing is handled in App.js through the Dialog in App.js
+  };
+  
   const handleExportClick = () => {
-    // This functionality is handled in App.js
+    // Close menu - actual export is handled in App.js
     handleMenuClose();
   };
 
@@ -83,10 +83,11 @@ const Header = () => {
     handleMenuClose();
   };
 
-  const handleFileChange = (event) => {
-    // This functionality is handled in App.js
-    // Just reset the file input
-    event.target.value = null;
+  const handleFileChange = () => {
+    // Just reset the file input - actual import is handled in App.js
+    if (fileInputRef.current) {
+      fileInputRef.current.value = null;
+    }
   };
 
   let statusChip;
@@ -157,7 +158,9 @@ const Header = () => {
             }}
             open={Boolean(anchorEl)}
             onClose={handleMenuClose}
-          >
+          >            {/* These menu items trigger UI actions, but the actual functionality
+                is implemented in App.js. The Dialog in this component is redundant
+                with the one in App.js and should be removed in a future refactoring. */}
             <MenuItem onClick={handleClearClick}>
               <DeleteIcon fontSize="small" sx={{ mr: 1 }} />
               Clear Chat
@@ -186,7 +189,7 @@ const Header = () => {
                 Failed to connect: {typeof error === 'string' ? error : error.message || 'Unknown error'}
             </Typography>
         </Box>
-      }
+      }      {/* This Dialog is currently not used as App.js handles the actual clearing and confirmation */}
       <Dialog
         open={clearDialogOpen}
         onClose={handleClearCancel}

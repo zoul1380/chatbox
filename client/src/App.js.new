@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Box, Container, Paper, CircularProgress, Typography, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle } from '@mui/material';
-import { useDispatch, useSelector } from 'react-redux';
+import { Box, Container, Paper, Typography, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle } from '@mui/material';
+import { useSelector } from 'react-redux';
 import Header from './components/Header';
 import ChatMessage from './components/ChatMessage';
 import ChatInput from './components/ChatInput';
@@ -9,7 +9,6 @@ import { v4 as uuidv4 } from 'uuid';
 const API_BASE_URL = 'http://localhost:3001/api/ollama';
 
 const App = () => {
-  const dispatch = useDispatch();
   const [messages, setMessages] = useState([]);
   const [isSending, setIsSending] = useState(false);
   const chatHistoryRef = useRef(null);
