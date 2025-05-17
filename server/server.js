@@ -8,7 +8,7 @@ const PORT = process.env.PORT || 3001; // Backend server port
 
 // Middleware
 app.use(cors()); // Enable CORS for all routes
-app.use(express.json()); // for parsing application/json
+app.use(express.json({limit: '50mb'})); // for parsing application/json with increased limit for base64 images
 app.use('/api/ollama', rateLimiter); // Apply rate limiting to all Ollama API routes
 
 // Ollama routes

@@ -2,6 +2,50 @@ const axios = require('axios');
 
 const OLLAMA_API_URL = 'http://localhost:11434';
 
+// Helper function to process messages with images for multimodal models
+function processMessagesWithImages(messages, images) {
+  // If no images were provided, return messages as is
+  if (!images || images.length === 0) {
+    return messages;
+  }
+
+  // Process messages to include images using Ollama's multimodal format
+  const processedMessages = [...messages];
+  
+  // For each image, find the corresponding message and add the image
+  images.forEach(imageData => {
+    if (imageData && imageData.messageIndex !== undefined) {
+      const index = imageData.messageIndex;
+      if (processedMessages[index]) {
+        // Ollama multimodal format expects content as an array of objects 
+        // with either 'type': 'text' or 'type': 'image'
+        let content = [];
+        
+        // Add the text content
+        if (processedMessages[index].content) {
+          content.push({
+            type: 'text',
+            text: processedMessages[index].content
+          });
+        }
+        
+        // Add the image content
+        if (imageData.data) {
+          content.push({
+            type: 'image',
+            image: imageData.data.split(',')[1] // Remove the data:image/jpeg;base64, prefix
+          });
+        }
+        
+        // Replace the content with the array of content objects
+        processedMessages[index].content = content;
+      }
+    }
+  });
+  
+  return processedMessages;
+}
+
 // Controller to check Ollama server health
 exports.checkOllamaHealth = async (req, res) => {
   try {
@@ -33,7 +77,7 @@ exports.getOllamaTags = async (req, res) => {
 
 // Controller to stream chat responses from Ollama
 exports.streamChat = async (req, res) => {
-  const { model, messages, stream } = req.body; // Expecting model name, message history, and stream flag
+  const { model, messages, images } = req.body; // Expecting model name, message history, images
 
   if (!model || !messages) {
     return res.status(400).json({ message: 'Model and messages are required.' });
@@ -45,11 +89,14 @@ exports.streamChat = async (req, res) => {
   res.setHeader('Connection', 'keep-alive');
   res.flushHeaders(); // Flush the headers to establish the connection
 
+  // Process messages to include images if any
+  const processedMessages = processMessagesWithImages(messages, images);
+
   let ollamaResponse;
   try {
     const ollamaPayload = {
       model: model,
-      messages: messages,
+      messages: processedMessages,
       stream: true, // Ensure streaming is enabled
     };
 

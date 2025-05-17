@@ -1,11 +1,13 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { AppBar, Toolbar, Typography, Chip, Select, MenuItem, FormControl, InputLabel, Box, IconButton, Menu, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Button } from '@mui/material';
+import { AppBar, Toolbar, Typography, Chip, Select, MenuItem, FormControl, InputLabel, Box, IconButton, Menu, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Button, Tooltip } from '@mui/material';
 import { checkOllamaServerHealth, fetchOllamaModels, setSelectedModel, incrementConnectionRetries, resetConnectionRetries } from '../features/ollama/ollamaSlice';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import DeleteIcon from '@mui/icons-material/Delete';
 import FileUploadIcon from '@mui/icons-material/FileUpload';
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
+import ImageIcon from '@mui/icons-material/Image';
+import { isMultimodalModel } from '../utils/modelUtils';
 
 const MAX_CONNECTION_RETRIES = 5;
 const HEALTH_CHECK_INTERVAL = 30000; // 30 seconds
@@ -120,16 +122,41 @@ const Header = () => {
               value={selectedModel || ''}
               label="Model"
               onChange={handleModelChange}
-              disabled={!models || models.length === 0}
+              disabled={!models || models.length === 0}              renderValue={(selected) => {
+                const supportsImages = isMultimodalModel(selected);
+                return (
+                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    {selected} 
+                    {supportsImages && (
+                      <Tooltip title="Supports image input" arrow>
+                        <ImageIcon fontSize="small" sx={{ ml: 0.5, color: 'primary.main' }} />
+                      </Tooltip>
+                    )}
+                  </Box>
+                );
+              }}
             >
               <MenuItem value="">
                 <em>None</em>
-              </MenuItem>
-              {models && models.map((model) => (
-                <MenuItem key={model.name} value={model.name}>
-                  {model.name} ({(new Date(model.modified_at)).toLocaleDateString()})
-                </MenuItem>
-              ))}
+              </MenuItem>              {models && models.map((model) => {
+                // Check if model supports images using our utility function
+                const supportsImages = isMultimodalModel(model.name);
+                return (
+                  <MenuItem key={model.name} value={model.name}>
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                      <span>{model.name}</span>
+                      {supportsImages && (
+                        <Tooltip title="Supports image input" arrow>
+                          <ImageIcon fontSize="small" sx={{ ml: 0.5, color: 'primary.main' }} />
+                        </Tooltip>
+                      )}
+                      <Typography variant="caption" sx={{ ml: 1, color: 'text.secondary' }}>
+                        ({(new Date(model.modified_at)).toLocaleDateString()})
+                      </Typography>
+                    </Box>
+                  </MenuItem>
+                );
+              })}
             </Select>
           </FormControl>
         )}

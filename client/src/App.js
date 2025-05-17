@@ -5,6 +5,17 @@ import Header from './components/Header';
 import ChatMessage from './components/ChatMessage';
 import ChatInput from './components/ChatInput';
 import { v4 as uuidv4 } from 'uuid';
+import { isMultimodalModel } from './utils/modelUtils';
+
+// Helper function to convert image file to base64 string
+const convertImageToBase64 = (file) => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = (error) => reject(error);
+    reader.readAsDataURL(file);
+  });
+};
 
 const API_BASE_URL = 'http://localhost:3001/api/ollama';
 
@@ -44,10 +55,15 @@ const App = () => {
     }
   }, [messages]);
 
-  const handleSendMessage = async (text) => {
+  const handleSendMessage = async (text, imageFile) => {
     if (!selectedModel || ollamaStatus !== 'connected') {
       console.error("Cannot send message: No model selected or Ollama disconnected.");
       return;
+    }
+
+    let imageDataUrl = null;
+    if (imageFile) {
+      imageDataUrl = await convertImageToBase64(imageFile);
     }
 
     const userMessage = { 
@@ -55,16 +71,26 @@ const App = () => {
       text, 
       sender: 'user', 
       timestamp: new Date().toISOString(), 
-      type: 'text'
+      type: 'text',
+      image: imageDataUrl
     };
-    
-    // Prepare messages for Ollama API
+      // Prepare messages for Ollama API
     const apiMessages = messages
         .map(msg => ({ 
             role: msg.sender === 'user' ? 'user' : 'assistant', 
             content: msg.text 
         }))
         .concat([{ role: 'user', content: text }]);
+        
+    // Prepare images for Ollama API (for multimodal models)
+    let apiImages = [];
+    if (imageDataUrl) {
+      // Add the image data to the images array with its corresponding message index
+      apiImages.push({
+        messageIndex: apiMessages.length - 1, // Index of the last message (the one we just added)
+        data: imageDataUrl
+      });
+    }
 
     setMessages(prevMessages => [...prevMessages, userMessage]);
     setIsSending(true);
@@ -81,8 +107,32 @@ const App = () => {
     setMessages(prevMessages => [...prevMessages, botMessagePlaceholder]);
 
     let accumulatedResponse = '';
-    let responseType = 'markdown';
-
+    let responseType = 'markdown';    // Determine if we need to warn about sending images to a possibly non-multimodal model
+    if (imageDataUrl && apiImages.length > 0) {
+      const modelSupportsImages = isMultimodalModel(selectedModel);
+      
+      // Append an appropriate note to the assistant's response about images
+      setMessages(prevMessages => {
+        const lastMessage = prevMessages[prevMessages.length - 1];
+        if (lastMessage.sender === 'bot' && lastMessage.isLoading) {
+          let warningText = "";
+          
+          if (!modelSupportsImages) {
+            warningText = "⚠️ You've attached an image, but the current model doesn't appear to support image input. " +
+                          "Please select a multimodal model (like llava, bakllava or others that support images) for best results.\n\n";
+          } else {
+            warningText = "📷 Image attached. This model supports image input and should respond to the image content.\n\n";
+          }
+          
+          return [...prevMessages.slice(0, -1), {
+            ...lastMessage,
+            text: warningText
+          }];
+        }
+        return prevMessages;
+      });
+    }
+    
     try {
       const response = await fetch(`${API_BASE_URL}/chat`, {
         method: 'POST',
@@ -90,7 +140,11 @@ const App = () => {
           'Content-Type': 'application/json',
           'Accept': 'text/event-stream'
         },
-        body: JSON.stringify({ model: selectedModel, messages: apiMessages })
+        body: JSON.stringify({ 
+          model: selectedModel, 
+          messages: apiMessages,
+          images: apiImages.length > 0 ? apiImages : undefined
+        })
       });
 
       if (!response.ok) {
@@ -183,11 +237,11 @@ const App = () => {
   const handleCancelClear = () => {
     setClearConfirmOpen(false);
   };
-
   const handleExportChat = () => {
     if (!messages.length) return;
     const fileName = `chat_history_${selectedModel}_${new Date().toISOString().split('T')[0]}.json`;
     // Filter out role/content properties if they exist
+    // Keep image data in the exported file
     const exportableMessages = messages.map(({role, content, ...rest}) => rest);
     const jsonStr = JSON.stringify(exportableMessages, null, 2);
     const blob = new Blob([jsonStr], { type: "application/json" });
@@ -200,7 +254,6 @@ const App = () => {
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
   };
-
   const handleImportChat = (event) => {
     const file = event.target.files[0];
     if (file && selectedModel) {
@@ -216,6 +269,7 @@ const App = () => {
                 sender: msg.sender || 'unknown',
                 timestamp: msg.timestamp || new Date().toISOString(),
                 type: msg.type || 'text',
+                image: msg.image || null, // Preserve any image data
             }));
             setMessages(validatedMessages);
             const historyId = `chatHistory_${selectedModel}`;
