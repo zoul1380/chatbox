@@ -11,7 +11,7 @@ import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 
 const ChatMessage = ({ message }) => {  const { text, sender, timestamp, isLoading, isError, type } = message;
   const isUser = sender === 'user';
-  const content = text || '';
+  const content = (typeof text === 'string') ? text : (text || '').toString();
   
   const handleCopyToClipboard = () => {
     navigator.clipboard.writeText(content);
@@ -113,7 +113,8 @@ const ChatMessage = ({ message }) => {  const { text, sender, timestamp, isLoadi
               />
             )
           }}
-        >          {content}
+        >
+          {content}
         </ReactMarkdown>
         
         <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1, alignItems: 'center', opacity: 0.7 }}>
