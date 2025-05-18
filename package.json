@@ -2,12 +2,12 @@
   "name": "chatbox",
   "version": "1.0.0",
   "description": "ChatBox application that interfaces with a local Ollama language model server",
-  "main": "index.js",
-  "scripts": {
+  "main": "index.js",  "scripts": {
     "server": "nodemon server/server.js",
     "client": "cd client && npm start",
     "dev": "concurrently \"npm run server\" \"npm run client\"",
-    "start": "node server/server.js"
+    "start": "node server/server.js",
+    "test:logs": "cd server && npm run test:logs"
   },
   "keywords": [],
   "author": "",
