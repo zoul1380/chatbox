@@ -17,28 +17,21 @@ function processMessagesWithImages(messages, images) {
     if (imageData && imageData.messageIndex !== undefined) {
       const index = imageData.messageIndex;
       if (processedMessages[index]) {
-        // Ollama multimodal format expects content as an array of objects 
-        // with either 'type': 'text' or 'type': 'image'
-        let content = [];
+        // Store the original text content
+        const textContent = processedMessages[index].content;
         
-        // Add the text content
-        if (processedMessages[index].content) {
-          content.push({
-            type: 'text',
-            text: processedMessages[index].content
-          });
-        }
-        
-        // Add the image content
+        // Add the image data to the message using Ollama's expected format
+        // Ollama expects an "images" array with base64 encoded image data
         if (imageData.data) {
-          content.push({
-            type: 'image',
-            image: imageData.data.split(',')[1] // Remove the data:image/jpeg;base64, prefix
-          });
+          // Split off the data:image/jpeg;base64, prefix
+          const base64Image = imageData.data.split(',')[1];
+          
+          // Add images array to the message
+          processedMessages[index].images = [base64Image];
+          
+          // Keep the original text content as is
+          processedMessages[index].content = textContent;
         }
-        
-        // Replace the content with the array of content objects
-        processedMessages[index].content = content;
       }
     }
   });
