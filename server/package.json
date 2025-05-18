@@ -1,12 +1,14 @@
 {
   "name": "server",
   "version": "1.0.0",
-  "main": "server.js",
+  "main": "dist/server.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node server.js",
-    "dev": "node server.js",
-    "test:logs": "node test-logging.js"
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "dev": "ts-node server.ts",
+    "dev:watch": "ts-node-dev --respawn server.ts",
+    "test:logs": "ts-node test-logging.ts"
   },
   "keywords": [],
   "author": "",
@@ -19,5 +21,16 @@
     "express-winston": "^4.2.0",
     "winston": "^3.17.0",
     "winston-daily-rotate-file": "^5.0.0"
+  },
+  "devDependencies": {
+    "@types/axios": "^0.9.36",
+    "@types/cors": "^2.8.18",
+    "@types/express": "^5.0.2",
+    "@types/express-winston": "^3.0.4",
+    "@types/node": "^22.15.18",
+    "@types/winston": "^2.4.4",
+    "ts-node": "^10.9.2",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.8.3"
   }
 }
