@@ -6,7 +6,7 @@
     "server": "nodemon server/server.js",
     "client": "cd client && npm start",
     "dev": "concurrently \"npm run server\" \"npm run client\"",
-    "start": "node server/server.js",
+    "start": "node server/server.ts",
     "test:logs": "cd server && npm run test:logs"
   },
   "keywords": [],
