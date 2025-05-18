@@ -12,23 +12,34 @@ let successCount = 0;
 let failureCount = 0;
 let retryCount = 0;
 
-// Simple logger
+// Import the logger
+const { logger } = require('../utils/logger');
+
+// Enhanced logger
 const logRequest = (req, status, retried = false) => {
-  const now = new Date();
-  const timestamp = now.toISOString();
   const endpoint = req.originalUrl;
   const method = req.method;
   const model = req.body?.model || 'none';
   
-  console.log(`[${timestamp}] ${method} ${endpoint} | Status: ${status} | Model: ${model} ${retried ? '| RETRY' : ''}`);
+  const logData = {
+    method,
+    endpoint,
+    status,
+    model,
+    retried: retried || false,
+    ip: req.ip,
+  };
+  
+  if (status >= 200 && status < 300) {
+    logger.info(`${method} ${endpoint} | Status: ${status} | Model: ${model} ${retried ? '| RETRY' : ''}`, logData);
+    successCount++;
+  } else {
+    logger.warn(`${method} ${endpoint} | Status: ${status} | Model: ${model} ${retried ? '| RETRY' : ''}`, logData);
+    failureCount++;
+  }
   
   // Increment counters
   requestCount++;
-  if (status >= 200 && status < 300) {
-    successCount++;
-  } else {
-    failureCount++;
-  }
   if (retried) {
     retryCount++;
   }
@@ -36,13 +47,17 @@ const logRequest = (req, status, retried = false) => {
 
 // Export periodic stats logging (can be hooked up to server.js)
 exports.logStats = () => {
-  console.log(`
-API Requests Stats:
-- Total: ${requestCount}
-- Successful: ${successCount}
-- Failed: ${failureCount}
-- Retries: ${retryCount}
-  `);
+  const statsMessage = `API Requests Stats: Total=${requestCount}, Successful=${successCount}, Failed=${failureCount}, Retries=${retryCount}`;
+  
+  logger.info(statsMessage, {
+    stats: {
+      totalRequests: requestCount,
+      successfulRequests: successCount,
+      failedRequests: failureCount,
+      retriedRequests: retryCount,
+      activeRequests: activeRequests
+    }
+  });
 };
 
 // Rate limiter middleware
@@ -79,7 +94,18 @@ exports.rateLimiter = (req, res, next) => {
 
 // Global error handler
 exports.errorHandler = (err, req, res, next) => {
-  console.error('Global error handler caught:', err.message);
+  const { logger, captureError } = require('../utils/logger');
+  
+  // Log the error using our enhanced logger
+  logger.error(`Global error handler caught: ${err.message}`, { 
+    error: err.message,
+    stack: err.stack
+  });
+  
+  // Capture full error details for the API logs
+  captureError(err, req, res);
+  
+  // Track in request stats
   logRequest(req, err.status || 500);
   
   if (!res.headersSent) {

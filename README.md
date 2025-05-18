@@ -46,6 +46,15 @@ This will start both the backend server (port 3001) and frontend development ser
 2. Select a model from the dropdown in the header
 3. Start chatting!
 
+### Server Logs
+
+The server includes a comprehensive logging system:
+
+- View logs in your browser: `http://localhost:3001/logs/html`
+- Access logs via API: `http://localhost:3001/logs`
+- Filter logs by date range and access advanced features
+- Log rotation and management built-in
+
 ## Application Structure
 
 - `/client` - React frontend
