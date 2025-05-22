@@ -187,10 +187,9 @@ const Header = () => {
             onClose={handleMenuClose}
           >            {/* These menu items trigger UI actions, but the actual functionality
                 is implemented in App.js. The Dialog in this component is redundant
-                with the one in App.js and should be removed in a future refactoring. */}
-            <MenuItem onClick={handleClearClick}>
+                with the one in App.js and should be removed in a future refactoring. */}            <MenuItem onClick={handleClearClick}>
               <DeleteIcon fontSize="small" sx={{ mr: 1 }} />
-              Clear Chat
+              New Chat
             </MenuItem>
             <MenuItem onClick={handleExportClick}>
               <FileDownloadIcon fontSize="small" sx={{ mr: 1 }} />
@@ -221,16 +220,16 @@ const Header = () => {
         open={clearDialogOpen}
         onClose={handleClearCancel}
       >
-        <DialogTitle>Clear Chat History</DialogTitle>
+        <DialogTitle>New Chat</DialogTitle>
         <DialogContent>
           <DialogContentText>
-            Are you sure you want to clear all messages for the current model? This action cannot be undone.
+            Are you sure you want to start a new chat? Your current chat will be saved in the history panel.
           </DialogContentText>
         </DialogContent>
         <DialogActions>
           <Button onClick={handleClearCancel}>Cancel</Button>
-          <Button onClick={handleClearConfirm} color="error" autoFocus>
-            Clear
+          <Button onClick={handleClearConfirm} color="primary" autoFocus>
+            New Chat
           </Button>
         </DialogActions>
       </Dialog>

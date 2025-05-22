@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Box, Container, Paper, Typography, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle } from '@mui/material';
 import { useSelector, useDispatch } from 'react-redux';
 import Header from './components/Header';
@@ -133,7 +133,6 @@ const App = () => {
       isLoading: true,
       type: 'markdown' // Default type, can change based on content
     };
-    
     setMessages(prevMessages => {
       const updatedMessages = [...prevMessages, botMessagePlaceholder];
       
@@ -147,14 +146,11 @@ const App = () => {
     });
 
     let accumulatedResponse = '';
-    let responseType = 'markdown';
-    
-    // Determine if we need to warn about sending images to a possibly non-multimodal model
+    let responseType = 'markdown';    // Determine if we need to warn about sending images to a possibly non-multimodal model
     if (imageDataUrl && apiImages.length > 0) {
       const modelSupportsImages = isMultimodalModel(selectedModel);
       
-      // Append an appropriate note to the assistant's response about images
-      setMessages(prevMessages => {
+      // Append an appropriate note to the assistant's response about images      setMessages(prevMessages => {
         const lastMessage = prevMessages[prevMessages.length - 1];
         if (lastMessage.sender === 'bot' && lastMessage.isLoading) {
           let warningText = "";
@@ -226,8 +222,7 @@ const App = () => {
         }
 
         if (parsedData.message && parsedData.message.content) {
-          accumulatedResponse += parsedData.message.content;
-          // Check for code blocks
+          accumulatedResponse += parsedData.message.content;          // Check for code blocks
           if (accumulatedResponse.includes('```')) {
             responseType = 'code';
           }
@@ -277,37 +272,17 @@ const App = () => {
 
       // Stream finished but no "done" message received
       if (isSending) {
-        setMessages(prev => {
-          const updatedMessages = prev.map(msg =>
+         setMessages(prev => prev.map(msg =>
             msg.id === botMessageId ? { ...msg, isLoading: false, text: accumulatedResponse, type: responseType } : msg
-          );
-          
-          // Update the chat in the store
-          dispatch(updateChatMessages({
-            chatId: activeChatId,
-            messages: updatedMessages
-          }));
-          
-          return updatedMessages;
-        });
-        setIsSending(false);
+         ));
+         setIsSending(false);
       }
 
     } catch (error) {
       console.error("Error sending message:", error);
-      setMessages(prev => {
-        const updatedMessages = prev.map(msg =>
-          msg.id === botMessageId ? { ...msg, text: `Error: ${error.message}`, isError: true, isLoading: false } : msg
-        );
-        
-        // Update the chat in the store
-        dispatch(updateChatMessages({
-          chatId: activeChatId,
-          messages: updatedMessages
-        }));
-        
-        return updatedMessages;
-      });
+      setMessages(prev => prev.map(msg =>
+        msg.id === botMessageId ? { ...msg, text: `Error: ${error.message}`, isError: true, isLoading: false } : msg
+      ));
       setIsSending(false);
     }
   };
@@ -315,7 +290,6 @@ const App = () => {
   const handleClearConversation = () => {
     setClearConfirmOpen(true);
   };
-
   const handleConfirmClear = () => {
     // Create a new chat with the current model
     if (selectedModel) {
@@ -326,9 +300,7 @@ const App = () => {
 
   const handleCancelClear = () => {
     setClearConfirmOpen(false);
-  };
-  
-  const handleExportChat = () => {
+  };  const handleExportChat = () => {
     if (!messages.length) return;
     
     // Find the active chat to get its title
@@ -355,9 +327,7 @@ const App = () => {
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
-  };
-  
-  const handleImportChat = (event) => {
+  };const handleImportChat = (event) => {
     const file = event.target.files[0];
     if (file && selectedModel) {
       const reader = new FileReader();
@@ -411,7 +381,6 @@ const App = () => {
     }
     event.target.value = null; 
   };
-
   return (
     <Box sx={{ display: 'flex', height: '100vh', bgcolor: 'grey.100' }}>
       <Header />
