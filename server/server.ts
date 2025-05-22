@@ -29,6 +29,15 @@ app.use(cors()); // Enable CORS for all routes
 app.use(express.json({limit: '50mb'})); // for parsing application/json with increased limit for base64 images
 app.use('/api/ollama', rateLimiter); // Apply rate limiting to all Ollama API routes
 
+// Content Security Policy
+app.use((_req: Request, res: Response, next: Function) => {
+  res.setHeader(
+    'Content-Security-Policy',
+    "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' http://localhost:*;"
+  );
+  next();
+});
+
 // Import routes
 import ollamaRoutes from './routes/ollamaRoutes';
 import logsRouter from './routes/logsRoutes';

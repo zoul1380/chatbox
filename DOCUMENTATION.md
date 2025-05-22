@@ -17,8 +17,9 @@ This comprehensive documentation provides detailed information about the ChatBox
 10. [API Communication](#api-communication)
 11. [Error Handling](#error-handling)
 12. [Performance Considerations](#performance-considerations)
-13. [Future Enhancements](#future-enhancements)
-14. [GitHub Copilot Integration](#github-copilot-integration)
+13. [Security Measures](#security-measures)
+14. [Future Enhancements](#future-enhancements)
+15. [GitHub Copilot Integration](#github-copilot-integration)
 
 ## Project Overview
 
@@ -384,6 +385,38 @@ Main entry point for the Express server. Sets up middleware, routes, and error h
    - Local storage for chat histories
    - In-memory cache for frequently accessed data
    - Refresh strategy for periodically updated data
+
+## Security Measures
+
+### Content Security Policy (CSP)
+The application implements a Content Security Policy to mitigate cross-site scripting (XSS) attacks by controlling which resources can be loaded and executed:
+
+```javascript
+app.use((_req: Request, res: Response, next: Function) => {
+  res.setHeader(
+    'Content-Security-Policy',
+    "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' http://localhost:*;"
+  );
+  next();
+});
+```
+
+This policy:
+- Restricts scripts and styles to same-origin or inline code
+- Allows images from the same origin or data URIs
+- Permits connections to same-origin endpoints and local development servers
+
+### Rate Limiting
+API routes, especially those communicating with the Ollama service, are protected with rate limiting to prevent abuse.
+
+### TypeScript Migration
+The server codebase is being migrated to TypeScript to improve type safety, catch errors at build time, and provide better developer tooling.
+
+### Dependency Management
+Regular security audits are conducted on dependencies. See `DEPENDENCY_UPDATE_NOTES.md` for the current status of package updates and known vulnerabilities.
+
+### Future Security Improvements
+For planned security enhancements, refer to the `MIGRATION_PLAN.md` file, which outlines a roadmap for addressing dependency vulnerabilities and improving overall application security.
 
 ## Future Enhancements
 
