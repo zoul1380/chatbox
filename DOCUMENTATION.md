@@ -20,6 +20,7 @@ This comprehensive documentation provides detailed information about the ChatBox
 13. [Security Measures](#security-measures)
 14. [Future Enhancements](#future-enhancements)
 15. [GitHub Copilot Integration](#github-copilot-integration)
+16. [Recent Updates](#recent-updates)
 
 ## Project Overview
 
@@ -34,7 +35,8 @@ ChatBox is a modern web application that provides a user-friendly interface for 
 - Streaming chat responses with real-time updates
 - Syntax-highlighted code blocks
 - Markdown rendering
-- Chat history management using localStorage
+- Persistent chat history with left sidebar navigation
+- Multiple chat sessions per model with naming and management
 - Export/import conversation history with image support
 - Mobile-responsive design
 - Rate limiting and error handling
@@ -81,7 +83,13 @@ chatbox/
 │   ├── public/              # Static files
 │   └── src/
 │       ├── components/      # React components
+│       │   ├── ChatInput/   # User message input component
+│       │   ├── ChatMessage/ # Message display component
+│       │   ├── ChatPanel/   # Left sidebar with chat history components
+│       │   └── Header/      # App header with model selection
 │       ├── features/        # Redux slices (feature-based organization)
+│       │   ├── chats/       # Chat history management
+│       │   └── ollama/      # Ollama API connection management
 │       └── store/           # Redux store configuration
 ├── server/                  # Backend Express server
 │   ├── controllers/         # Route handlers
@@ -201,10 +209,14 @@ Main entry point for the Express server. Sets up middleware, routes, and error h
    }
    ```
 
-2. **Chat History**:
-   - Stored per-model in localStorage
-   - Key format: `chatHistory_${modelName}`
-   - Automatically loaded/saved when model changes or messages update
+2. **Chat History Management**:
+   - Managed through Redux state in the `chats` slice
+   - Each model has its own collection of chat sessions
+   - Chat sessions include metadata (title, creation date, last updated date)
+   - Active chat is highlighted in the sidebar
+   - Chats can be renamed, deleted, and navigated between
+   - Sidebar shows chat titles with timestamps
+   - Auto-generated titles based on first user message
 
 3. **Message Streaming**:
    - Uses Server-Sent Events (SSE) protocol
@@ -217,7 +229,8 @@ Main entry point for the Express server. Sets up middleware, routes, and error h
 1. **Model Selection**:
    - Dropdown in header displays available models
    - Models are fetched on initial load and periodically refreshed
-   - Selecting a model loads corresponding chat history
+   - Selecting a model loads corresponding chat sessions in the sidebar
+   - Automatically creates a new chat if no chats exist for the selected model
 
 2. **Server Health**:
    - Automatic health checks with exponential backoff retries
@@ -228,12 +241,40 @@ Main entry point for the Express server. Sets up middleware, routes, and error h
 
 1. **Export Format**:
    - JSON file with array of message objects
-   - Filename format: `chat_history_${modelName}_${date}.json`
+   - Filename format: `${chatTitle}_${modelName}_${date}.json`
+   - Preserves message content, types, and attached images
 
 2. **Import Process**:
    - File input accepts .json files
    - Validates message structure
-   - Replaces current chat history with imported messages
+   - Creates a new chat with the imported messages
+   - Auto-generates a title based on the first message
+
+### User Interface
+
+1. **Layout**:
+   - Left sidebar: Chat history and management (220px width)
+   - Main area: Active chat messages and input
+   - Header: Model selection and application controls
+   - Responsive design that adapts to mobile devices
+   - Optimized spacing between sidebar and main chat area for better UI flow
+   - Container-based layout with compact padding and margins
+   - Dense UI components to maximize content space
+   - Visual separation with subtle background colors and shadows
+
+2. **Chat Sidebar**:
+   - Shows all chats for the selected model
+   - "New Chat" button at the top
+   - Each chat shows title and last update time
+   - Active chat is highlighted
+   - Context menu for renaming and deleting chats
+   - Collapsible on mobile devices via hamburger menu
+
+3. **Chat Interface**:
+   - Message bubbles for user and assistant messages
+   - Input area with submit button and optional image attachment
+   - "New Chat" button to start a fresh conversation
+   - Export/Import buttons for chat management
 
 ## Coding Standards
 
@@ -296,9 +337,32 @@ Main entry point for the Express server. Sets up middleware, routes, and error h
     modelStatus: String,      // 'idle', 'loading', 'ready', 'error'
     error: String | Object,   // Error information
     connectionRetries: Number // Connection retry count
+  },
+  chats: {
+    chats: Object,            // Object to store chats by model (modelName -> array of chat objects)
+    activeChatId: String      // ID of the currently active chat
   }
 }
 ```
+
+### Redux Persistence
+
+The application uses redux-persist to maintain chat history across page refreshes and application restarts. This ensures that users don't lose their conversations when they close and reopen the application.
+
+```javascript
+// Store configuration with persistence
+const persistConfig = {
+  key: 'root',
+  storage: localStorage,
+  whitelist: ['chats'] // Only persist chat data
+};
+```
+
+Key persistence features:
+- Chat history persists across browser refreshes
+- Only chat data is persisted (not connection state)
+- Uses browser's localStorage for data storage
+- Automatic rehydration of persisted state on application load
 
 ### Redux Actions
 
@@ -491,6 +555,33 @@ When a new feature is implemented, this documentation should be updated as follo
 4. Add any new coding standards or patterns
 5. Document potential error scenarios and handling
 6. Update future enhancements section to reflect completed items
+
+## Recent Updates
+
+### May 22, 2025 Updates
+
+1. **Redux Persistence Implementation**
+   - Added redux-persist to maintain chat history across browser sessions
+   - Configured persistence to save only chat data to localStorage
+   - Implemented PersistGate to ensure proper state hydration before rendering UI
+   - Enhanced store configuration to handle serializable checks for persist actions
+
+2. **UI Layout Improvements**
+   - Fixed spacing issues between sidebar and main chat area
+   - Removed redundant padding from Box component and added proper padding to Container
+   - Improved responsive behavior on different screen sizes
+   - Ensured consistent spacing throughout the application
+   - Reduced sidebar width from 250px to 220px for a more compact interface
+   - Implemented dense UI components to maximize content display
+   - Added responsive padding for different screen sizes
+   - Enhanced visual separation with subtle background colors and shadows
+   - Refined button and list item styles for better usability
+   - Optimized whitespace usage throughout the interface
+
+3. **Bug Fixes**
+   - Fixed issue where chat history was lost on page refresh
+   - Ensured proper container sizing with flexbox layout
+   - Addressed UI glitches in the sidebar/main content spacing
 
 ---
 
