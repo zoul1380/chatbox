@@ -101,6 +101,8 @@ const ChatListItem = ({ chat, isActive }) => {
           onClick={handleClick}
           sx={{ 
             borderRadius: 1,
+            py: 0.75, // Reduce padding on top and bottom
+            pr: 0.5,  // Reduce padding on right
             "&.Mui-selected": {
               backgroundColor: "primary.light",
               "&:hover": {
@@ -114,11 +116,12 @@ const ChatListItem = ({ chat, isActive }) => {
             secondary={formatDate(chat.updated)}
             primaryTypographyProps={{
               noWrap: true,
+              fontSize: '0.9rem',
               style: { fontWeight: isActive ? "bold" : "normal" }
             }}
             secondaryTypographyProps={{
               noWrap: true,
-              style: { fontSize: "0.75rem" }
+              style: { fontSize: "0.7rem" }
             }}
           />
         </ListItemButton>

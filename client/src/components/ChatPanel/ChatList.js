@@ -39,30 +39,42 @@ const ChatList = () => {
   
   return (
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <Box sx={{ p: 1 }}>
+      <Box sx={{ p: 1.5, pb: 1 }}>
         <Button 
           variant="contained" 
           fullWidth 
           startIcon={<AddIcon />}
           onClick={handleNewChat}
+          size="small"
+          sx={{ 
+            borderRadius: 1.5,
+            textTransform: 'none',
+            py: 0.75,
+            boxShadow: 2,
+            '&:hover': {
+              boxShadow: 3
+            }
+          }}
         >
           New Chat
         </Button>
       </Box>
       
-      <Divider />
+      <Divider sx={{ mx: 1 }} />
       
-      <Box sx={{ flexGrow: 1, overflow: 'auto' }}>
+      <Box sx={{ flexGrow: 1, overflow: 'auto', px: 0.5 }}>
         {modelChats.length === 0 ? (
-          <Box sx={{ p: 2, textAlign: 'center' }}>
-            <Typography variant="body2" color="text.secondary">
+          <Box sx={{ p: 1.5, textAlign: 'center' }}>
+            <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.85rem' }}>
               No chats yet. Start a new chat!
             </Typography>
           </Box>
         ) : (
           <List
+            dense
+            sx={{ pt: 0, pb: 1 }}
             subheader={
-              <ListSubheader component="div" id="chats-list-subheader">
+              <ListSubheader component="div" id="chats-list-subheader" sx={{ lineHeight: '28px', fontSize: '0.75rem', fontWeight: 500, pl: 1 }}>
                 {`Chats for ${selectedModel}`}
               </ListSubheader>
             }

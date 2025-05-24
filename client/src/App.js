@@ -413,29 +413,46 @@ const App = () => {
   };
 
   return (
-    <Box sx={{ display: 'flex', height: '100vh', bgcolor: 'grey.100' }}>
+    <Box sx={{  height: '100vh', bgcolor: 'grey.50' }}>
       <Header />
       <ChatPanel />
-      
       <Box
         component="main"
         sx={{
           flexGrow: 1,
-          p: 3,
           width: { sm: `calc(100% - ${drawerWidth}px)` },
           ml: { sm: `${drawerWidth}px` },
+          display: 'flex',
+          flexDirection: 'column',
+          height: '100%',
+          pl: 0, // Remove left padding completely
+          bgcolor: '#ffffff', // White background for main content
         }}
       >
-        <Container maxWidth="lg" sx={{ display: 'flex', flexDirection: 'column', height: '100%', pt: '64px', pb: 2 }}>
+        <Container 
+          maxWidth="lg" 
+          disableGutters // Remove default gutters
+          sx={{ 
+            display: 'flex', 
+            flexDirection: 'column', 
+            height: '100%', 
+            pt: '64px', 
+            pb: 2, 
+            px: {xs: 0.5, sm: 1},
+            ml: 0 // Ensure no left margin on container
+          }}>
           <Paper 
             ref={chatHistoryRef} 
-            elevation={1} 
+            elevation={0} 
             sx={{ 
               flexGrow: 1, 
-              p: 2, 
+              p: {xs: 1, sm: 1.25}, 
               overflowY: 'auto', 
-              mb: 2, 
-              backgroundColor: 'white' 
+              mb: 1, 
+              backgroundColor: 'white',
+              borderRadius: 1,
+              border: '1px solid rgba(0, 0, 0, 0.05)',
+              mx: 0.5 // Add small margin on sides
             }}
           >
             {messages.length === 0 && (
@@ -447,11 +464,11 @@ const App = () => {
               <ChatMessage key={msg.id} message={msg} />
             ))}
           </Paper>
-          <Box sx={{display: 'flex', justifyContent:'space-between', alignItems: 'center', mb:1, px:1}}>
-              <Box>
-                  <Button size="small" onClick={handleClearConversation} disabled={messages.length === 0 || isSending}>New Chat</Button>
-                  <Button size="small" onClick={handleExportChat} disabled={messages.length === 0 || isSending}>Export Chat</Button>
-                  <Button size="small" component="label" disabled={!selectedModel || isSending}>
+          <Box sx={{display: 'flex', justifyContent:'space-between', alignItems: 'center', mb:0.75, mx:1}}>
+              <Box sx={{ display: 'flex', gap: 0.5 }}>
+                  <Button size="small" onClick={handleClearConversation} disabled={messages.length === 0 || isSending} sx={{ textTransform: 'none', minWidth: 0, py: 0.5 }}>New Chat</Button>
+                  <Button size="small" onClick={handleExportChat} disabled={messages.length === 0 || isSending} sx={{ textTransform: 'none', minWidth: 0, py: 0.5 }}>Export Chat</Button>
+                  <Button size="small" component="label" disabled={!selectedModel || isSending} sx={{ textTransform: 'none', minWidth: 0, py: 0.5 }}>
                       Import Chat
                       <input type="file" accept=".json" hidden onChange={handleImportChat} />
                   </Button>
@@ -461,7 +478,16 @@ const App = () => {
         </Container>
       </Box>
 
-      <Dialog open={clearConfirmOpen} onClose={handleCancelClear}>
+      <Dialog 
+        open={clearConfirmOpen} 
+        onClose={handleCancelClear}
+        PaperProps={{
+          sx: {
+            borderRadius: 1.5,
+            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)'
+          }
+        }}
+      >
         <DialogTitle>Start New Chat?</DialogTitle>
         <DialogContent>
           <DialogContentText>
